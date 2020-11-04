@@ -15,7 +15,7 @@
         (provide ast)
         (define ast AST))))
 
-;; parse-1sharp-init: any input-port -> [Listof (U `(I ,number ,number) string)]
+;; parse-1sharp-init: any input-port -> [Listof (U `(I ,number ,number ,source) string)]
 ;; initial call to the parser to start the main parsing
 (define (parse-1sharp-init src in)
   ; read whitespace
@@ -28,7 +28,7 @@
                                               src line column position 1)]
     [else (parse-1sharp-internal src in)]))
 
-;; parse-1sharp-internal: any input-port -> [Listof (U `(I ,number ,number) string)]
+;; parse-1sharp-internal: any input-port -> [Listof (U `(I ,number ,number ,source) string)]
 ;; main parsing funciton. Once a '1' is found, calls parse-1s
 (define (parse-1sharp-internal src in)
   ; read whitespace
@@ -44,7 +44,7 @@
                                       (list->string (list #\' curr-char #\')))
                        src line column position 1)]))
  
-;; parse-1s: any input-port number number number -> [Listof (U `(I ,number ,number) string)]
+;; parse-1s: any input-port number number number -> [Listof (U `(I ,number ,number ,source) string)]
 ;; parser that expects a '1' at the beginning.
 ;; Collects all '1's until an unknown character is found, then calls parse-#s
 (define (parse-1s src in ln col pos)
@@ -67,7 +67,7 @@
                    [else `(,n ,comments ,span)]))])
     (comments (parse-#s src in ln col pos 1s span))))
 
-;; parse-#s: any input-port number number number number number -> [Listof (U `(I ,number ,number) string)]
+;; parse-#s: any input-port number number number number number -> [Listof (U `(I ,number ,number ,source) string)]
 ;; parser that expects any non-whitespace character other than '1' at the beginning.
 ;; Collects all '#'s until an unknown character is found, then calls main parser.
 (define (parse-#s src in ln col pos ones span)
@@ -98,7 +98,8 @@
                             0)]
                    [else `(,n ,comments-pre-instr ,comments-post-instr ,span ,post-span)]))])
     (if (<= 1 sharps 5)
-        (comments-pre-instr `(cons (list 'I ,ones ,sharps) ,(comments-post-instr (parse-1sharp-internal src in))))
+        (comments-pre-instr `(cons (list 'I ,ones ,sharps ,(source ln col pos span))
+                                   ,(comments-post-instr (parse-1sharp-internal src in))))
         (raise-read-error (string-append "A 1sharp instruction '#' count should be in range [1,5], found "
                                          (number->string sharps) " '#'s.")
                           src ln col pos span))))
@@ -111,3 +112,6 @@
 (define d-list-empty (λ (ls) ls))
 (define (d-list-snoc x xs) (λ (ls) (xs `(cons ,x ,ls))))
 (define (d-list-append xs ys) (λ (ls) (xs (ys ls))))
+
+;; source struct (not using Racket struct cus then we get 3D syntax
+(define (source ln col pos span) `(list 'source ,ln ,col ,pos ,span))
