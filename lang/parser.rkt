@@ -5,7 +5,8 @@
 (require syntax/readerr)
 
 (provide (rename-out [parse-1sharp-exp read]
-                     [parse-1sharp read-syntax]))
+                     [parse-1sharp read-syntax])
+         get-info)
 
 ;; parse-1sharp: any input-port -> syntax
 ;; reader called to parse 1# programs
@@ -82,7 +83,8 @@
                  (cond
                    [(and (char? curr-char) (char=? #\; curr-char))
                     (read-char in)
-                    (define comment (read-line in))
+                    (define line (read-line in))
+                    (define comment (if (eof-object? line) "" line))
                     (define char-span (+ white-span 2 (string-length comment)))
                     (sharps n
                             comments-pre-instr
@@ -115,3 +117,25 @@
 
 ;; source struct (not using Racket struct cus then we get 3D syntax
 (define (source ln col pos span) `(list 'source ,ln ,col ,pos ,span))
+
+;; DrRacket util
+(define (get-info in mod line col pos)
+  (lambda (key default)
+    (case key
+      [(color-lexer)
+       ;color:start-colorer:get-token
+       (λ (in)
+         (define-values (line column pos) (port-next-location in))
+         (define char (read-char in))
+         (cond
+           [(eof-object? char) (values char 'eof #f #f #f)]
+           [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos))]
+           [(char=? #\1 char)(values (string char) 'keyword #f pos (add1 pos))]
+           [(char=? #\# char)(values (string char) 'keyword #f pos (add1 pos))]
+           [(char=? #\; char)
+            (define line (read-line in))
+            (define comment (if (eof-object? line) "" line))
+            (define comment-length (string-length comment))
+            (values (string-append ";" comment) 'comment #f pos (+ pos 1 comment-length))]
+           [else (values char 'error #f pos (add1 pos))]))]
+      [else default])))
