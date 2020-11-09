@@ -138,4 +138,7 @@
             (define comment-length (string-length comment))
             (values (string-append ";" comment) 'comment #f pos (+ pos 1 comment-length))]
            [else (values char 'error #f pos (add1 pos))]))]
+      [(drracket:opt-out-toolbar-buttons)
+       ; opt out of all usual DrRacket tool bar buttons
+       '(drracket:syncheck debug-tool macro-stepper)]
       [else default])))
