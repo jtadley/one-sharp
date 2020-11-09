@@ -119,25 +119,49 @@
 (define (source ln col pos span) `(list 'source ,ln ,col ,pos ,span))
 
 ;; DrRacket util
+
+(define colorer
+  (λ (in offset mode)
+    (define-values (line column pos) (port-next-location in))
+    (define char (peek-char in))
+    (cond
+      [(eof-object? char) (read-char in) (values char 'eof #f #f #f 0 mode)]
+      [else (match mode
+              [`((comment ,ln) . ,next-mode)
+               (if (= ln line)
+                   (begin (read-char in) (values (string char) 'comment #f pos (add1 pos) (add1 offset) mode))
+                   (colorer in 0 next-mode))]
+              [`((instr ,ones ,sharps) . ,bool)
+               (define char (read-char in))
+               (cond
+                 [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos) 0 mode)]
+                 [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
+                                            #f pos (add1 pos) 0
+                                            `((instr ,(add1 ones) 0) . ,bool))]
+                 [(char=? #\# char)
+                  (if (= sharps 5)
+                      (values (string char) 'error #f pos (add1 pos) 0 bool)
+                      (let ([new-bool (if (= sharps 0) (not bool) bool)])
+                        (values (string char) (if new-bool 'string 'keyword)
+                              #f pos (add1 pos) 0
+                              `((instr ,ones ,(add1 sharps)) . ,new-bool))))
+                  ]
+                 [(char=? #\; char) (values (string char) 'comment #f pos (add1 pos) 1 `((comment ,line) . ,mode))]
+                 [else (values (string char) 'error #f pos (add1 pos) 0 mode)])]
+              [bool
+               (define char (read-char in))
+               (cond
+                      [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos) 0 mode)]
+                      [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
+                                                 #f pos (add1 pos) 0 `((instr 1 0) . ,bool))]
+                      [(char=? #\; char) (values (string char) 'comment #f pos (add1 pos) 1 `((comment ,line) . ,bool))]
+                      [else (values (string char) 'error #f pos (add1 pos) 0 mode)])])])))
 (define (get-info in mod line col pos)
   (lambda (key default)
     (case key
       [(color-lexer)
        ;color:start-colorer:get-token
-       (λ (in)
-         (define-values (line column pos) (port-next-location in))
-         (define char (read-char in))
-         (cond
-           [(eof-object? char) (values char 'eof #f #f #f)]
-           [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos))]
-           [(char=? #\1 char)(values (string char) 'keyword #f pos (add1 pos))]
-           [(char=? #\# char)(values (string char) 'keyword #f pos (add1 pos))]
-           [(char=? #\; char)
-            (define line (read-line in))
-            (define comment (if (eof-object? line) "" line))
-            (define comment-length (string-length comment))
-            (values (string-append ";" comment) 'comment #f pos (+ pos 1 comment-length))]
-           [else (values char 'error #f pos (add1 pos))]))]
+       colorer]
       [(drracket:opt-out-toolbar-buttons)
        ; opt out of all usual DrRacket tool bar buttons
        '(drracket:syncheck debug-tool macro-stepper)]
