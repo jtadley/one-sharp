@@ -120,21 +120,22 @@
 
 ;; DrRacket util
 
+; colorer: input-port number (U boolean `((instr number number) . boolean)) -> colorer-vals
+; check color:start-colorer:get-token
 (define colorer
   (λ (in offset mode)
     (define-values (line column pos) (port-next-location in))
     (define char (peek-char in))
     (cond
       [(eof-object? char) (read-char in) (values char 'eof #f #f #f 0 mode)]
-      [else (match mode
-              [`((comment ,ln) . ,next-mode)
-               (if (= ln line)
-                   (begin (read-char in) (values (string char) 'comment #f pos (add1 pos) (add1 offset) mode))
-                   (colorer in 0 next-mode))]
+      [(char=? #\; char) (define comment (substring (read-line in) 1))
+                         (values comment 'comment #f pos (+ pos 1 (string-length comment)
+                                                            (if (eof-object? (peek-char in)) 0 1)) 0 mode)]
+      [(char-whitespace? char) (values (string (read-char in)) 'white-space #f pos (add1 pos) 0 mode)]
+      [else (read-char in)
+            (match mode
               [`((instr ,ones ,sharps) . ,bool)
-               (define char (read-char in))
                (cond
-                 [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos) 0 mode)]
                  [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
                                             #f pos (add1 pos) 0
                                             `((instr ,(add1 ones) 0) . ,bool))]
@@ -143,19 +144,14 @@
                       (values (string char) 'error #f pos (add1 pos) 0 bool)
                       (let ([new-bool (if (= sharps 0) (not bool) bool)])
                         (values (string char) (if new-bool 'string 'keyword)
-                              #f pos (add1 pos) 0
-                              `((instr ,ones ,(add1 sharps)) . ,new-bool))))
-                  ]
-                 [(char=? #\; char) (values (string char) 'comment #f pos (add1 pos) 1 `((comment ,line) . ,mode))]
+                                #f pos (add1 pos) 0
+                                `((instr ,ones ,(add1 sharps)) . ,new-bool))))]
                  [else (values (string char) 'error #f pos (add1 pos) 0 mode)])]
               [bool
-               (define char (read-char in))
                (cond
-                      [(char-whitespace? char) (values (string char) 'white-space #f pos (add1 pos) 0 mode)]
-                      [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
-                                                 #f pos (add1 pos) 0 `((instr 1 0) . ,bool))]
-                      [(char=? #\; char) (values (string char) 'comment #f pos (add1 pos) 1 `((comment ,line) . ,bool))]
-                      [else (values (string char) 'error #f pos (add1 pos) 0 mode)])])])))
+                 [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
+                                            #f pos (add1 pos) 0 `((instr 1 0) . ,bool))]
+                 [else (values (string char) 'error #f pos (add1 pos) 0 mode)])])])))
 (define (get-info in mod line col pos)
   (lambda (key default)
     (case key
