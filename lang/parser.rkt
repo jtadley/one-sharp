@@ -118,10 +118,16 @@
 ;; source struct (not using Racket struct cus then we get 3D syntax
 (define (source ln col pos span) `(list 'source ,ln ,col ,pos ,span))
 
-;; DrRacket util
+;################
+; DrRacket util
+;################
 
 ; colorer: input-port number (U boolean `((instr number number) . boolean)) -> colorer-vals
 ; check color:start-colorer:get-token
+; Colors instructions alternatively (first 'keyword, then 'string).
+; 1's are "okay", #'s could be colored red if there are more than 5 of em.
+; Any text other than 1# is colored red
+; Any text prefixed by a ';' is colored 'comment
 (define colorer
   (λ (in offset mode)
     (define-values (line column pos) (port-next-location in))
@@ -134,24 +140,23 @@
       [(char-whitespace? char) (values (string (read-char in)) 'white-space #f pos (add1 pos) 0 mode)]
       [else (read-char in)
             (match mode
-              [`((instr ,ones ,sharps) . ,bool)
+              [`((instr ,ones ,sharps) . ,bool); we have atleast seen one '1'
                (cond
                  [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
                                             #f pos (add1 pos) 0
                                             `((instr ,(add1 ones) 0) . ,bool))]
                  [(char=? #\# char)
-                  (if (= sharps 5)
-                      (values (string char) 'error #f pos (add1 pos) 0 bool)
-                      (let ([new-bool (if (= sharps 0) (not bool) bool)])
-                        (values (string char) (if new-bool 'string 'keyword)
-                                #f pos (add1 pos) 0
-                                `((instr ,ones ,(add1 sharps)) . ,new-bool))))]
+                  (define new-bool (if (= sharps 0) (not bool) bool))
+                  (define col (if new-bool 'string 'keyword))
+                  (values (string char) col #f pos (add1 pos) 0
+                          (if (= sharps 4) new-bool `((instr ,ones ,(add1 sharps)) . ,new-bool)))]
                  [else (values (string char) 'error #f pos (add1 pos) 0 mode)])]
-              [bool
+              [bool; we expect to see a '1'
                (cond
                  [(char=? #\1 char) (values (string char) (if bool 'keyword 'string)
                                             #f pos (add1 pos) 0 `((instr 1 0) . ,bool))]
                  [else (values (string char) 'error #f pos (add1 pos) 0 mode)])])])))
+
 (define (get-info in mod line col pos)
   (lambda (key default)
     (case key
