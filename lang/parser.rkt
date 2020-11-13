@@ -9,12 +9,70 @@
          get-info)
 
 ;; parse-1sharp: any input-port -> syntax
-;; reader called to parse 1# programs
+;; reader called to parse 1# programs (1#'s Reader, i.e, read-syntax)
 (define (parse-1sharp src in)
   (with-syntax ([AST (parse-1sharp-init src in)])
     #'(module huh racket
         (provide ast)
         (define ast 'AST))))
+
+; lex-1#: any input-port -> (U one sharp unkown comment eof)
+; where
+;  one: #'#\1
+;  sharp: #'#\#
+;  unknown: #'(unknown Char)
+;  comment: #'String
+;  eof: eof-object
+; where all of the above contain appropriate source locations
+; tokenizes the first token found in the given input port
+(define (lex-1# src in)
+  ;read whitespace
+  (regexp-match #px"^\\s*" in)
+  (define-values (line column position) (port-next-location in))
+  (define curr-char (read-char in))
+  (cond
+    [(eof-object? curr-char) curr-char]
+    [(or (char=? #\1 curr-char)
+         (char=? #\# curr-char))
+     (datum->syntax #f curr-char `(,src ,line ,column ,position 1))]
+    [(char=? #\; curr-char)
+     (define comment (if (eof-object? (peek-char in)) "" (read-line in)))
+     ; if comment is at the last line, it doesn't end with a "\n" (that's what I get for using read-line)
+     (define last-line? (eof-object? (peek-char in)))
+
+     ; span computed as follows: semi-colon + comment + (if last line, 0, else 1 cus of \n)
+     (datum->syntax #f comment `(,src ,line ,column ,position ,(+ 1 (string-length comment) (if last-line? 0 1))))]
+    [else (datum->syntax #f `(unknown ,curr-char) `(,src ,line ,column ,position 1))]))
+
+(module+ test
+  (require rackunit)
+  
+  (define (syntax~? s1 s2)
+    (check-equal? (syntax->datum s1) (syntax->datum s2))
+    (check-eqv? (syntax-position s1) (syntax-position s2))
+    (check-eqv? (syntax-span s1) (syntax-span s2)))
+  
+  (define test-input-port (open-input-string "
+        ;startWithACommentNewLine!
+1
+  1 #   ;1
+1 ####a #
+;lastLineNoNewLine!"))
+  
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "startWithACommentNewLine!" '(#f #f #f 10 27)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 37 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 41 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 43 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "1" '(#f #f #f 47 3)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 50 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 52 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 53 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 54 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 55 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f '(unknown #\a) '(#f #f #f 56 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 58 1)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "lastLineNoNewLine!" '(#f #f #f 60 19)))
+  (check-true (eof-object? (lex-1# #f test-input-port))))
 
 ;; parse-1sharp-init: any input-port -> [Listof (U `(I ,number ,number ,source) string)]
 ;; initial call to the parser to start the main parsing
@@ -101,7 +159,7 @@
                    [else `(,n ,comments-pre-instr ,comments-post-instr ,span ,post-span)]))])
     (if (<= 1 sharps 5)
         (comments-pre-instr (cons `(I ,ones ,sharps ,(source ln col pos span))
-                                   (comments-post-instr (parse-1sharp-internal src in))))
+                                  (comments-post-instr (parse-1sharp-internal src in))))
         (raise-read-error (string-append "A 1sharp instruction '#' count should be in range [1,5], found "
                                          (number->string sharps) " '#'s.")
                           src ln col pos span))))
