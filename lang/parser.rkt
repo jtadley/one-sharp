@@ -14,7 +14,7 @@
   (with-syntax ([AST (parse-1sharp-init src in)])
     #'(module huh racket
         (provide ast)
-        (define ast AST))))
+        (define ast 'AST))))
 
 ;; parse-1sharp-init: any input-port -> [Listof (U `(I ,number ,number ,source) string)]
 ;; initial call to the parser to start the main parsing
@@ -24,7 +24,7 @@
   (define-values (line column position) (port-next-location in))
   (define curr-char (peek-char in))
   (cond
-    [(char=? #\; curr-char) (read-char in)`(cons ,(read-line in) ,(parse-1sharp-init src in))]
+    [(char=? #\; curr-char) (read-char in) (cons (read-line in) (parse-1sharp-init src in))]
     [(char=? #\# curr-char) (raise-read-error (string-append "A 1sharp instruction can not start with a #")
                                               src line column position 1)]
     [else (parse-1sharp-internal src in)]))
@@ -37,8 +37,8 @@
   (define-values (line column position) (port-next-location in))
   (define curr-char (peek-char in))
   (cond
-    [(eof-object? curr-char) 'empty] ; this is the only point eof
-    [(char=? #\; curr-char) (read-char in)`(cons ,(read-line in) ,(parse-1sharp-internal src in))]
+    [(eof-object? curr-char) empty] ; this is the only point eof
+    [(char=? #\; curr-char) (read-char in) (cons (read-line in) (parse-1sharp-internal src in))]
     [(char=? #\1 curr-char) (parse-1s src in line column position)]
     [else ; only place we take care of unknown characters
      (raise-read-error (string-append "A 1sharp instruction can not contain a "
@@ -100,8 +100,8 @@
                             0)]
                    [else `(,n ,comments-pre-instr ,comments-post-instr ,span ,post-span)]))])
     (if (<= 1 sharps 5)
-        (comments-pre-instr `(cons (list 'I ,ones ,sharps ,(source ln col pos span))
-                                   ,(comments-post-instr (parse-1sharp-internal src in))))
+        (comments-pre-instr (cons `(I ,ones ,sharps ,(source ln col pos span))
+                                   (comments-post-instr (parse-1sharp-internal src in))))
         (raise-read-error (string-append "A 1sharp instruction '#' count should be in range [1,5], found "
                                          (number->string sharps) " '#'s.")
                           src ln col pos span))))
@@ -112,11 +112,11 @@
 ;; d-list util
 ;; Allows 'n' snocs to be in O(n)
 (define d-list-empty (λ (ls) ls))
-(define (d-list-snoc x xs) (λ (ls) (xs `(cons ,x ,ls))))
+(define (d-list-snoc x xs) (λ (ls) (xs (cons x ls))))
 (define (d-list-append xs ys) (λ (ls) (xs (ys ls))))
 
 ;; source struct (not using Racket struct cus then we get 3D syntax
-(define (source ln col pos span) `(list 'source ,ln ,col ,pos ,span))
+(define (source ln col pos span) `(source ,ln ,col ,pos ,span))
 
 ;################
 ; DrRacket util
