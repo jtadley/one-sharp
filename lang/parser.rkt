@@ -21,8 +21,8 @@
 ;  one: #'#\1
 ;  sharp: #'#\#
 ;  unknown: #'(unknown Char)
-;  comment: #'String
-;  eof: eof-object
+;  comment: #'(comment String)
+;  eof: (eof)
 ; where all of the above contain appropriate source locations
 ; tokenizes the first token found in the given input port
 (define (lex-1# src in)
@@ -31,7 +31,7 @@
   (define-values (line column position) (port-next-location in))
   (define curr-char (read-char in))
   (cond
-    [(eof-object? curr-char) curr-char]
+    [(eof-object? curr-char) (datum->syntax #f '(eof) #f)]
     [(or (char=? #\1 curr-char)
          (char=? #\# curr-char))
      (datum->syntax #f curr-char `(,src ,line ,column ,position 1))]
@@ -41,7 +41,7 @@
      (define last-line? (eof-object? (peek-char in)))
 
      ; span computed as follows: semi-colon + comment + (if last line, 0, else 1 cus of \n)
-     (datum->syntax #f comment `(,src ,line ,column ,position ,(+ 1 (string-length comment) (if last-line? 0 1))))]
+     (datum->syntax #f `(comment ,comment) `(,src ,line ,column ,position ,(+ 1 (string-length comment) (if last-line? 0 1))))]
     [else (datum->syntax #f `(unknown ,curr-char) `(,src ,line ,column ,position 1))]))
 
 (module+ test
@@ -59,11 +59,11 @@
 1 ####a #
 ;lastLineNoNewLine!"))
   
-  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "startWithACommentNewLine!" '(#f #f #f 10 27)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f '(comment "startWithACommentNewLine!") '(#f #f #f 10 27)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 37 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 41 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 43 1)))
-  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "1" '(#f #f #f 47 3)))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f '(comment "1") '(#f #f #f 47 3)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\1 '(#f #f #f 50 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 52 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 53 1)))
