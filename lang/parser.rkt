@@ -71,8 +71,30 @@
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 55 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f '(unknown #\a) '(#f #f #f 56 1)))
   (syntax~? (lex-1# #f test-input-port) (datum->syntax #f #\# '(#f #f #f 58 1)))
-  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f "lastLineNoNewLine!" '(#f #f #f 60 19)))
-  (check-true (eof-object? (lex-1# #f test-input-port))))
+  (syntax~? (lex-1# #f test-input-port) (datum->syntax #f '(comment "lastLineNoNewLine!") '(#f #f #f 60 19)))
+  (check-equal? (syntax->datum (lex-1# #f test-input-port)) '(eof)))
+
+#;(define (parse-1#-internal src in)
+    (define tokens
+      (let lex ()
+        (define tok (lex-1# src in))
+        (if (eof-object? tok) empty (cons tok (lex)))))
+    (define 1? (syntax-parser [#\1 #t] [_ #f]))
+    (define sharp? (syntax-parser [#\# #t] [_ #f]))
+    (define comment? (compose string? syntax->datum))
+    (define unknown? (syntax-parser [(unknown _) #t] [_ #f]))
+    (define (parse tokens)
+      (cond
+        [(empty? tokens) empty]
+        [(empty? tokens) empty])
+      (if (empty? tokens)
+          empty
+          (let )))
+    (define (get-ones tokens)
+      (match tokens
+        [()]))
+    (define (till-next-instr tokens) 2)
+    tokens)
 
 ;; parse-1sharp-init: any input-port -> [Listof (U `(I ,number ,number ,source) string)]
 ;; initial call to the parser to start the main parsing
