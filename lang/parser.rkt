@@ -28,13 +28,12 @@
 ; tokenizes the first token found in the given input port
 (define (lex-1# src in)
   ;read whitespace
-  (define-values (w-line w-column w-position) (port-next-location in))
+  (define-values (line column position) (port-next-location in))
   (define whitespaces (bytes-length (car (regexp-match #px"^\\s*" in))))
   (cond
     [(not (zero? whitespaces)) (datum->syntax #f '(whitespace)
-                                              `(,src ,w-line ,w-column ,w-position ,whitespaces))]
+                                              `(,src ,line ,column ,position ,whitespaces))]
     [else
-     (define-values (line column position) (port-next-location in))
      (define curr-char (read-char in))
      (cond
        [(eof-object? curr-char) (datum->syntax #f '(eof) #f)]
