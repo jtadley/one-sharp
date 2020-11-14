@@ -201,7 +201,9 @@
 (define (parse-1sharp-exp in)
   (syntax->datum (parse-1sharp #f in)))
 
-;; d-list util
+;##############
+; d-list util
+;##############
 ;; Allows 'n' snocs to be in O(n)
 (define d-list-empty (λ (ls) ls))
 (define (d-list-snoc x xs) (λ (ls) (xs (cons x ls))))
@@ -285,8 +287,6 @@
   (check-color? #f 'whitespace 'no-color #f 59 60 #f)
   (check-color? #f "lastLineNoNewLine!" 'comment #f 60 79 #f)
   (check-color? #f eof 'eof #f #f #f #f))
-
-
 
 (define (get-info in mod line col pos)
   (lambda (key default)
