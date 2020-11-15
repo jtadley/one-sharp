@@ -1,7 +1,7 @@
-#lang reader "parser.rkt"
+#lang one-sharp
 1#####
 
-
+##
 1#
 ;test
 1#
