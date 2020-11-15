@@ -2,7 +2,11 @@
 (require one-sharp/lexer syntax/parse syntax/readerr)
 (provide (rename-out [parse-1# parse]))
 
+; parser: any input-port -> [Listof (syntax (U (instr Number Number) (comment String)))]
+; returns a list of comments and instructions found in the given input port
+; if comments are found between an instruction, they are hoisted above it.
 (define (parse-1# src in)
+  ; helpers
   (define 1? (syntax-parser [#\1 #t] [_ #f]))
   (define sharp? (syntax-parser [#\# #t] [_ #f]))
   (define comment? (syntax-parser #:datum-literals(comment) [(comment _) #t] [_ #f]))
@@ -11,6 +15,7 @@
   (define whitespace? (syntax-parser #:datum-literals(whitespace) [(whitespace) #t] [_ #f]))
   (define eof? (syntax-parser #:datum-literals(eof) [(eof) #t] [_ #f]))
 
+  ; apply lex repeatedly, collect comments, 1s, and #s. If we see an unknown, throw an error.
   (define tokens
     (let lexer ()
       (define tok (lex src in))
@@ -24,15 +29,17 @@
                                           (syntax-span tok))]
         [(whitespace? tok) (lexer)]
         [else (cons tok (lexer))])))
-    
+  
+  ; collect instructions and comments  
   (define (parse tokens)
     (cond
       [(empty? tokens) empty]
       [else (define-values (1s first-1 comments maybe-sharps) (parse-1s tokens))
             (define-values (sharps last-# pre-comments post-comments rest) (parse-#s maybe-sharps))
             (cond
-              [(zero? (+ 1s sharps)) (append comments post-comments)]
-              [(and (zero? 1s) (> sharps 0))
+              [(zero? (+ 1s sharps)) ; no instruction was found, but might have comments
+               (append comments post-comments)]
+              [(and (zero? 1s) (> sharps 0)) ; no 1s were found, but we found #s (only possible for the very first instruction)
                (define first-#  (car tokens))
                (define pos (syntax-position first-#))
                (define span (add1 (- (syntax-position last-#) pos)))
@@ -40,7 +47,7 @@
                                    "A 1sharp instruction should start with atleast one 1"
                                    (datum->syntax #f (build-string sharps (λ (_) #\#))
                                                   `(,src ,(syntax-line first-#) ,(syntax-column first-#) ,pos ,span)))]
-              [else
+              [else ; we found an instruction
                (define starting-line (syntax-line first-1))
                (define starting-col (syntax-column first-1))
                (define starting-pos (syntax-position first-1))
