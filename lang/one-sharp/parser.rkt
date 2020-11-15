@@ -35,7 +35,7 @@
               [(and (zero? 1s) (> sharps 0))
                (define first-#  (car tokens))
                (define pos (syntax-position first-#))
-               (define span (add1 (+ (syntax-position last-#) pos)))
+               (define span (add1 (- (syntax-position last-#) pos)))
                (raise-syntax-error #f
                                    "A 1sharp instruction should start with atleast one 1"
                                    (datum->syntax #f (build-string sharps (λ (_) #\#))
