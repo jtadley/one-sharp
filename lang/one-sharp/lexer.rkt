@@ -1,7 +1,7 @@
 #lang racket
 (provide (rename-out [lex-1# lex]))
 
-; lex-1#: any input-port -> (U one sharp unkown comment eof)
+; lex-1#: any input-port -> (U one sharp unknown comment eof)
 ; where
 ;  one: #'#\1
 ;  sharp: #'#\#
