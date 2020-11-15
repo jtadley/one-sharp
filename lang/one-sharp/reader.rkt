@@ -4,9 +4,8 @@
                      [parse-1# read-syntax]))
 
 (define (parse-1# src in)
-  #`(module one-sharp racket
-                       (provide ast)
-                       (define ast '#,(parse src in))))
+  #`(module one-sharp one-sharp/expander
+                       #,(parse src in)))
 
 (define (parse-1#-exp in)
   (syntax->datum (parse-1# #f in)))
