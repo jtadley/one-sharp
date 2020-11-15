@@ -86,3 +86,50 @@
                (values sharps last-# new-pre-comments new-post-comments rest)]
               [(? sharp?) (values (add1 sharps) (or last-# (car tokens)) pre-comments post-comments rest)])]))
   (parse tokens))
+
+(module+ test
+  (require rackunit)
+  
+  (define test-input-port (open-input-string "
+        ;startWithACommentNewLine!
+1
+  1 #   ;1
+1 #### #
+;lastLineNoNewLine!"))
+  (define (syntax~? s1 s2)
+    (check-equal? (syntax->datum s1) (syntax->datum s2))
+    (check-eqv? (syntax-position s1) (syntax-position s2))
+    (check-eqv? (syntax-span s1) (syntax-span s2)))
+  (define parsed-test-input-port (parse-1# #f test-input-port))
+  (define expected-parse-tree `(,(datum->syntax #f '(comment "startWithACommentNewLine!") '(#f #f #f 10 27))
+                                ,(datum->syntax #f '(instr 2 1) '(#f #f #f 37 7))
+                                ,(datum->syntax #f '(comment "1") '(#f #f #f 47 3))
+                                ,(datum->syntax #f '(instr 1 5) '(#f #f #f 50 8))
+                                ,(datum->syntax #f '(comment "lastLineNoNewLine!") '(#f #f #f 59 19))))
+
+  (for ([act-node parsed-test-input-port]
+        [exp-node expected-parse-tree])
+    (syntax~? act-node exp-node))
+
+  ; testing an instruction with no 1's
+  (define no-sharp (open-input-string "#####"))
+  (check-exn
+   (regexp "atleast one")
+   (lambda ()
+     (parse-1# #f no-sharp)))
+
+  ; testing an instruction with more than 5 sharps
+  (define 6-sharp (open-input-string "1 ## ## ##"))
+
+  (check-exn
+   (regexp "\\[1,5\\], found 6")
+   (lambda ()
+     (parse-1# #f 6-sharp)))
+
+  ; testing a program with unknown character
+  (define unknown (open-input-string "1 ## ## s##"))
+
+  (check-exn
+   (regexp "the character 's'")
+   (lambda ()
+     (parse-1# #f unknown))))
