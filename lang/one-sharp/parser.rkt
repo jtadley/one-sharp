@@ -132,4 +132,27 @@
   (check-exn
    (regexp "the character 's'")
    (lambda ()
-     (parse-1# #f unknown))))
+     (parse-1# #f unknown)))
+
+  ; testing hoisted comments
+  (define comments (open-input-string "
+;comment1
+1
+;comment2
+1
+;comment3
+#
+;comment4
+#
+;comment5"))
+
+  (define exp-parse-tree `(,(datum->syntax #f '(comment "comment1") '(#f #f #f 2 10))  ; commentn + semi + newline
+                           ,(datum->syntax #f '(comment "comment2") '(#f #f #f 14 10))
+                           ,(datum->syntax #f '(comment "comment3") '(#f #f #f 26 10))
+                           ,(datum->syntax #f '(comment "comment4") '(#f #f #f 38 10))
+                           ,(datum->syntax #f '(instr 2 2) '(#f #f #f 12 37)) ; 2x1\n + #\n + # + 3x10 (each comment line spans 10 chars) 
+                           ; last comment is not hoisted
+                           ,(datum->syntax #f '(comment "comment5") '(#f #f #f 50 9)))) ; commentn + semi (no newline here)
+  (for ([act-node (parse-1# #f comments)]
+        [exp-node exp-parse-tree])
+    (syntax~? act-node exp-node)))
