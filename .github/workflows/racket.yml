@@ -20,4 +20,4 @@ jobs:
       - name: Install Package and its Dependencies
         run: raco pkg install --auto --batch
       - name: Run one-sharp Tests
-        run: raco test lang/one-sharp/main.rkt
+        run: raco test ./
