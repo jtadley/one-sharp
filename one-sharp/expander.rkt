@@ -1,5 +1,5 @@
 #lang racket
-(require (for-syntax syntax/parse one-sharp/parser))
+(require (for-syntax syntax/parse))
 (provide (rename-out [one-sharp-mod-beg #%module-begin])
          #%top-interaction)
 
