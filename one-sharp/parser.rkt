@@ -25,12 +25,14 @@
       (define tok (lex src in))
       (cond
         [(eof? tok) empty]
-        [(unknown? tok) (raise-read-error (format "1sharp programs can't contain the character '~a'" (get-unknown tok))
-                                          src
-                                          (syntax-line tok)
-                                          (syntax-column tok)
-                                          (syntax-position tok)
-                                          (syntax-span tok))]
+        [(unknown? tok) (raise-syntax-error 'bad-syntax
+                                            (format "1sharp programs can't contain the character '~a'" (get-unknown tok))
+                                            (datum->syntax #f tok
+                                                           `(,src
+                                                             ,(syntax-line tok)
+                                                             ,(syntax-column tok)
+                                                             ,(syntax-position tok)
+                                                             ,(syntax-span tok))))]
         [(whitespace? tok) (lexer)]
         [else (cons tok (lexer))])))
   
