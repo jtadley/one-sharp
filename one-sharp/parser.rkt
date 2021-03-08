@@ -25,12 +25,14 @@
       (define tok (lex src in))
       (cond
         [(eof? tok) empty]
-        [(unknown? tok) (raise-read-error (format "1sharp programs can't contain the character '~a'" (get-unknown tok))
-                                          src
-                                          (syntax-line tok)
-                                          (syntax-column tok)
-                                          (syntax-position tok)
-                                          (syntax-span tok))]
+        [(unknown? tok) (raise-syntax-error 'bad-syntax
+                                            "found an unexpected character"
+                                            (datum->syntax #f (list->string `(,(get-unknown tok)))
+                                                           `(,src
+                                                             ,(syntax-line tok)
+                                                             ,(syntax-column tok)
+                                                             ,(syntax-position tok)
+                                                             ,(syntax-span tok))))]
         [(whitespace? tok) (lexer)]
         [else (cons tok (lexer))])))
   
@@ -59,7 +61,7 @@
                (define span (- ending-pos starting-pos))
                (cond
                  [(not (< 0 sharps 6)) (raise-syntax-error 'bad-instr
-                                                           (format "A 1sharp instruction '#' count should be in range [1,5], found ~a #s" sharps)
+                                                           (format "A 1sharp instruction's '#' count should be in range [1,5], found ~a #s" sharps)
                                                            (datum->syntax #f (format "~a~a"
                                                                                      (build-string 1s (λ (_) #\1))
                                                                                      (build-string sharps (λ (_) #\#)))
@@ -140,7 +142,7 @@
   (define unknown (open-input-string "1 ## ## s##"))
 
   (check-exn
-   (regexp "the character 's'")
+   (regexp "unexpected character")
    (lambda ()
      (parse-1# #f unknown)))
 
