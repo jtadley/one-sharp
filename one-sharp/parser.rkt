@@ -142,7 +142,7 @@
   (define unknown (open-input-string "1 ## ## s##"))
 
   (check-exn
-   (regexp "the character 's'")
+   (regexp "unexpected character")
    (lambda ()
      (parse-1# #f unknown)))
 
