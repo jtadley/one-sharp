@@ -36,7 +36,9 @@
                            ""
                            (string-append lang-lit " " one-sharp-lit formatted-code)))
                      ; now we edit the text% object
-                     (send text% clear)
+                     (send text% begin-edit-sequence)
+                     (send text% erase)
                      (send text% insert final-code 0 'same #f)
-                     (send text% set-position current-pos 'same #f #t 'default))))]
+                     (send text% set-position current-pos 'same #f #t 'default)
+                     (send text% end-edit-sequence))))]
         [else default]))))
