@@ -26,8 +26,8 @@
       (cond
         [(eof? tok) empty]
         [(unknown? tok) (raise-syntax-error 'bad-syntax
-                                            (format "1sharp programs can't contain the character '~a'" (get-unknown tok))
-                                            (datum->syntax #f tok
+                                            "found an unexpected character"
+                                            (datum->syntax #f (list->string `(,(get-unknown tok)))
                                                            `(,src
                                                              ,(syntax-line tok)
                                                              ,(syntax-column tok)
@@ -61,7 +61,7 @@
                (define span (- ending-pos starting-pos))
                (cond
                  [(not (< 0 sharps 6)) (raise-syntax-error 'bad-instr
-                                                           (format "A 1sharp instruction '#' count should be in range [1,5], found ~a #s" sharps)
+                                                           (format "A 1sharp instruction's '#' count should be in range [1,5], found ~a #s" sharps)
                                                            (datum->syntax #f (format "~a~a"
                                                                                      (build-string 1s (λ (_) #\1))
                                                                                      (build-string sharps (λ (_) #\#)))
